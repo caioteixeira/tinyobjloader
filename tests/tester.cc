@@ -585,6 +585,172 @@ TEST_CASE("refl", "[refl]") {
   REQUIRE(materials[0].reflection_texname.compare("reflection.tga") == 0);
 }
 
+TEST_CASE("map_Bump", "[bump]") {
+  tinyobj::attrib_t attrib;
+  std::vector<tinyobj::shape_t> shapes;
+  std::vector<tinyobj::material_t> materials;
+
+  std::string err;
+  bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, "../models/map-bump.obj", gMtlBasePath);
+
+  if (!err.empty()) {
+    std::cerr << err << std::endl;
+  }
+
+  PrintInfo(attrib, shapes, materials);
+
+  REQUIRE(true == ret);
+  REQUIRE(2 == materials.size());
+
+  REQUIRE(materials[0].bump_texname.compare("bump.jpg") == 0);
+}
+
+TEST_CASE("g_ignored", "[Issue138]") {
+  tinyobj::attrib_t attrib;
+  std::vector<tinyobj::shape_t> shapes;
+  std::vector<tinyobj::material_t> materials;
+
+  std::string err;
+  bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, "../models/issue-138.obj", gMtlBasePath);
+
+  if (!err.empty()) {
+    std::cerr << err << std::endl;
+  }
+
+  PrintInfo(attrib, shapes, materials);
+
+  REQUIRE(true == ret);
+  REQUIRE(2 == shapes.size());
+  REQUIRE(2 == materials.size());
+
+}
+
+TEST_CASE("vertex-col-ext", "[Issue144]") {
+  tinyobj::attrib_t attrib;
+  std::vector<tinyobj::shape_t> shapes;
+  std::vector<tinyobj::material_t> materials;
+
+  std::string err;
+
+  bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, "../models/cube-vertexcol.obj", gMtlBasePath);
+
+  if (!err.empty()) {
+    std::cerr << err << std::endl;
+  }
+
+  //PrintInfo(attrib, shapes, materials);
+
+  REQUIRE(true == ret);
+  REQUIRE((8 * 3) == attrib.colors.size());
+
+  REQUIRE(0 == Approx(attrib.colors[3 * 0 + 0]));
+  REQUIRE(0 == Approx(attrib.colors[3 * 0 + 1]));
+  REQUIRE(0 == Approx(attrib.colors[3 * 0 + 2]));
+
+  REQUIRE(0 == Approx(attrib.colors[3 * 1 + 0]));
+  REQUIRE(0 == Approx(attrib.colors[3 * 1 + 1]));
+  REQUIRE(1 == Approx(attrib.colors[3 * 1 + 2]));
+
+  REQUIRE(1 == Approx(attrib.colors[3 * 4 + 0]));
+
+  REQUIRE(1 == Approx(attrib.colors[3 * 7 + 0]));
+  REQUIRE(1 == Approx(attrib.colors[3 * 7 + 1]));
+  REQUIRE(1 == Approx(attrib.colors[3 * 7 + 2]));
+}
+
+TEST_CASE("norm_texopts", "[norm]") {
+  tinyobj::attrib_t attrib;
+  std::vector<tinyobj::shape_t> shapes;
+  std::vector<tinyobj::material_t> materials;
+
+  std::string err;
+  bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, "../models/norm-texopt.obj", gMtlBasePath);
+
+  if (!err.empty()) {
+    std::cerr << err << std::endl;
+  }
+
+  REQUIRE(true == ret);
+  REQUIRE(1 == shapes.size());
+  REQUIRE(1 == materials.size());
+  REQUIRE(3.0 == Approx(materials[0].normal_texopt.bump_multiplier));
+
+}
+
+TEST_CASE("zero-face-idx-value", "[Issue140]") {
+  tinyobj::attrib_t attrib;
+  std::vector<tinyobj::shape_t> shapes;
+  std::vector<tinyobj::material_t> materials;
+
+  std::string err;
+  bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, "../models/issue-140-zero-face-idx.obj", gMtlBasePath);
+
+  
+  if (!err.empty()) {
+    std::cerr << err << std::endl;
+  }
+  REQUIRE(false == ret);
+  REQUIRE(!err.empty());
+
+}
+
+TEST_CASE("texture-name-whitespace", "[Issue145]") {
+  tinyobj::attrib_t attrib;
+  std::vector<tinyobj::shape_t> shapes;
+  std::vector<tinyobj::material_t> materials;
+
+  std::string err;
+  bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, "../models/texture-filename-with-whitespace.obj", gMtlBasePath);
+
+  
+  if (!err.empty()) {
+    std::cerr << "[Issue145] " << err << std::endl;
+  }
+
+  REQUIRE(true == ret);
+  REQUIRE(err.empty());
+  REQUIRE(2 < materials.size());
+
+  REQUIRE(0 == materials[0].diffuse_texname.compare("texture 01.png"));
+  REQUIRE(0 == materials[1].bump_texname.compare("bump 01.png"));
+  REQUIRE(2 == Approx(materials[1].bump_texopt.bump_multiplier));
+
+}
+
+TEST_CASE("smoothing-group", "[Issue162]") {
+  tinyobj::attrib_t attrib;
+  std::vector<tinyobj::shape_t> shapes;
+  std::vector<tinyobj::material_t> materials;
+
+  std::string err;
+  bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, "../models/issue-162-smoothing-group.obj", gMtlBasePath);
+
+  
+  if (!err.empty()) {
+    std::cerr << "[Issue162] " << err << std::endl;
+  }
+
+  REQUIRE(true == ret);
+  REQUIRE(2 == shapes.size());
+
+  REQUIRE(2 == shapes[0].mesh.smoothing_group_ids.size());
+  REQUIRE(1 == shapes[0].mesh.smoothing_group_ids[0]);
+  REQUIRE(1 == shapes[0].mesh.smoothing_group_ids[1]);
+
+  REQUIRE(10 == shapes[1].mesh.smoothing_group_ids.size());
+  REQUIRE(0 == shapes[1].mesh.smoothing_group_ids[0]);
+  REQUIRE(0 == shapes[1].mesh.smoothing_group_ids[1]);
+  REQUIRE(3 == shapes[1].mesh.smoothing_group_ids[2]);
+  REQUIRE(3 == shapes[1].mesh.smoothing_group_ids[3]);
+  REQUIRE(4 == shapes[1].mesh.smoothing_group_ids[4]);
+  REQUIRE(4 == shapes[1].mesh.smoothing_group_ids[5]);
+  REQUIRE(0 == shapes[1].mesh.smoothing_group_ids[6]);
+  REQUIRE(0 == shapes[1].mesh.smoothing_group_ids[7]);
+  REQUIRE(6 == shapes[1].mesh.smoothing_group_ids[8]);
+  REQUIRE(6 == shapes[1].mesh.smoothing_group_ids[9]);
+
+}
+
 #if 0
 int
 main(

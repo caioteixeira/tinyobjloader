@@ -10,7 +10,7 @@
 
 [![Coverage Status](https://coveralls.io/repos/github/syoyo/tinyobjloader/badge.svg?branch=master)](https://coveralls.io/github/syoyo/tinyobjloader?branch=master)
 
-http://syoyo.github.io/tinyobjloader/
+[https://github.com/syoyo/tinyobjloader](https://github.com/syoyo/tinyobjloader)
 
 Tiny but powerful single file wavefront obj loader written in C++. No dependency except for C++ STL. It can parse over 10M polygons with moderate memory and time.
 
@@ -26,7 +26,7 @@ Old version is available `v0.9.x` branch https://github.com/syoyo/tinyobjloader/
 
 ## What's new
 
-* 20 Aug, 2016 : Bump version v1.0.0. New data strcutre and API!
+* 20 Aug, 2016 : Bump version v1.0.0. New data structure and API!
 
 ### Old version
 
@@ -37,7 +37,7 @@ Previous old version is avaiable in `v0.9.x` branch.
 ![Rungholt](images/rungholt.jpg)
 
 tinyobjloader can successfully load 6M triangles Rungholt scene.
-http://graphics.cs.williams.edu/data/meshes.xml
+http://casual-effects.com/data/index.html
 
 ![](images/sanmugel.png) 
 
@@ -55,7 +55,10 @@ TinyObjLoader is successfully used in ...
 * Loading models in Vulkan Tutorial https://vulkan-tutorial.com/Loading_models
 * .obj viewer with Metal https://github.com/middlefeng/NuoModelViewer/tree/master
 * Vulkan Cookbook https://github.com/PacktPublishing/Vulkan-Cookbook
-* Your project here!
+* cudabox: CUDA Solid Voxelizer Engine https://github.com/gaspardzoss/cudavox
+* Drake: A planning, control, and analysis toolbox for nonlinear dynamical systems https://github.com/RobotLocomotion/drake
+* VFPR - a Vulkan Forward Plus Renderer : https://github.com/WindyDarian/Vulkan-Forward-Plus-Renderer
+* Your project here! (Letting us know via github issue is welcome!)
 
 ### Old version(v0.9.x)
 
@@ -86,6 +89,7 @@ TinyObjLoader is successfully used in ...
 
 * Group(parse multiple group name)
 * Vertex
+  * Vertex color(as an extension: https://blender.stackexchange.com/questions/31997/how-can-i-get-vertex-painted-obj-files-to-import-into-blender)
 * Texcoord
 * Normal
 * Material
@@ -94,6 +98,7 @@ TinyObjLoader is successfully used in ...
 * PBR material extension for .MTL. Its proposed here: http://exocortex.com/blog/extending_wavefront_mtl_to_support_pbr
 * Callback API for custom loading.
 * Double precision support(for HPC application).
+* Smoothing group
 
 
 ## TODO
@@ -101,8 +106,6 @@ TinyObjLoader is successfully used in ...
 * [ ] Fix obj_sticker example.
 * [ ] More unit test codes.
 * [x] Texture options
-* [ ] Normal vector generation
-  * [ ] Support smoothing groups
 
 ## License
 
@@ -134,6 +137,13 @@ attrib_t::texcoords => 2 floats per vertex
        t[0]        t[1]        t[2]        t[3]               t[n-1]
   +-----------+-----------+-----------+-----------+      +-----------+
   |  u  |  v  |  u  |  v  |  u  |  v  |  u  |  v  | .... |  u  |  v  |
+  +-----------+-----------+-----------+-----------+      +-----------+
+
+attrib_t::colors => 3 floats per vertex(vertex color. optional)
+
+       c[0]        c[1]        c[2]        c[3]               c[n-1]
+  +-----------+-----------+-----------+-----------+      +-----------+
+  | x | y | z | x | y | z | x | y | z | x | y | z | .... | x | y | z |
   +-----------+-----------+-----------+-----------+      +-----------+
 
 ```
@@ -225,6 +235,10 @@ for (size_t s = 0; s < shapes.size(); s++) {
       tinyobj::real_t nz = attrib.normals[3*idx.normal_index+2];
       tinyobj::real_t tx = attrib.texcoords[2*idx.texcoord_index+0];
       tinyobj::real_t ty = attrib.texcoords[2*idx.texcoord_index+1];
+      // Optional: vertex colors
+      // tinyobj::real_t red = attrib.colors[3*idx.vertex_index+0];
+      // tinyobj::real_t green = attrib.colors[3*idx.vertex_index+1];
+      // tinyobj::real_t blue = attrib.colors[3*idx.vertex_index+2];
     }
     index_offset += fv;
 

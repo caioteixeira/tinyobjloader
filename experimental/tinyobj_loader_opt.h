@@ -1,12 +1,12 @@
 //
 // Optimized wavefront .obj loader.
-// Requires ltalloc and C++11
+// Requires lfpAlloc and C++11
 //
 
 /*
 The MIT License (MIT)
 
-Copyright (c) 2012-2016 Syoyo Fujita and many contributors.
+Copyright (c) 2012-2017 Syoyo Fujita and many contributors.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,6 @@ THE SOFTWARE.
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <unistd.h>
 #endif
 
 #include <cassert>
@@ -55,7 +54,7 @@ THE SOFTWARE.
 #include <chrono>  // C++11
 #include <thread>  // C++11
 
-#include "ltalloc.hpp"
+#include "lfpAlloc/Allocator.hpp"
 
 namespace tinyobj_opt {
 
@@ -327,12 +326,12 @@ struct index_t {
 };
 
 typedef struct {
-  std::vector<float, lt::allocator<float> > vertices;
-  std::vector<float, lt::allocator<float> > normals;
-  std::vector<float, lt::allocator<float> > texcoords;
-  std::vector<index_t, lt::allocator<index_t> > indices;
-  std::vector<int, lt::allocator<int> > face_num_verts;
-  std::vector<int, lt::allocator<int> > material_ids;
+  std::vector<float, lfpAlloc::lfpAllocator<float> > vertices;
+  std::vector<float, lfpAlloc::lfpAllocator<float> > normals;
+  std::vector<float, lfpAlloc::lfpAllocator<float> > texcoords;
+  std::vector<index_t, lfpAlloc::lfpAllocator<index_t> > indices;
+  std::vector<int, lfpAlloc::lfpAllocator<int> > face_num_verts;
+  std::vector<int, lfpAlloc::lfpAllocator<int> > material_ids;
 } attrib_t;
 
 typedef StackVector<char, 256> ShortString;
@@ -999,9 +998,9 @@ typedef struct {
   float tx, ty;
 
   // for f
-  std::vector<index_t, lt::allocator<index_t> > f;
+  std::vector<index_t, lfpAlloc::lfpAllocator<index_t> > f;
   // std::vector<index_t> f;
-  std::vector<int, lt::allocator<int> > f_num_verts;
+  std::vector<int, lfpAlloc::lfpAllocator<int> > f_num_verts;
 
   const char *group_name;
   unsigned int group_name_len;
@@ -1047,7 +1046,13 @@ bool parseObj(attrib_t *attrib, std::vector<shape_t> *shapes,
               std::vector<material_t> *materials, const char *buf, size_t len,
               const LoadOption &option);
 
+} // namespace tinyobj_opt
+
+#endif  // TINOBJ_LOADER_OPT_H_
+
 #ifdef TINYOBJ_LOADER_OPT_IMPLEMENTATION
+
+namespace tinyobj_opt {
 
 static bool parseLine(Command *command, const char *p, size_t p_len,
                       bool triangulate = true) {
@@ -1271,7 +1276,8 @@ bool parseObj(attrib_t *attrib, std::vector<shape_t> *shapes,
 
   auto t1 = std::chrono::high_resolution_clock::now();
 
-  std::vector<LineInfo, lt::allocator<LineInfo> > line_infos[kMaxThreads];
+  std::vector<LineInfo, lfpAlloc::lfpAllocator<LineInfo> >
+      line_infos[kMaxThreads];
   for (size_t t = 0; t < static_cast<size_t>(num_threads); t++) {
     // Pre allocate enough memory. len / 128 / num_threads is just a heuristic
     // value.
@@ -1323,11 +1329,10 @@ bool parseObj(attrib_t *attrib, std::vector<shape_t> *shapes,
           }
         }
 
-        // Find extra line which spand across chunk boundary.
-        if ((t < num_threads) && (buf[end_idx - 1] != '\n')) {
-          auto extra_span_idx = (std::min)(end_idx - 1 + chunk_size, len - 1);
-          for (size_t i = end_idx; i < extra_span_idx; i++) {
-            if (is_line_ending(buf, i, extra_span_idx)) {
+        // If at least one line started in this chunk, find where it ends in the rest of the buffer
+        if ((prev_pos != start_idx) && (t < num_threads) && (buf[end_idx - 1] != '\n')) {
+          for (size_t i = end_idx; i < len; i++) {
+            if (is_line_ending(buf, i, len)) {
               LineInfo info;
               info.pos = prev_pos;
               info.len = i - prev_pos;
@@ -1434,7 +1439,9 @@ bool parseObj(attrib_t *attrib, std::vector<shape_t> *shapes,
     // std::cout << "mtllib :" << material_filename << std::endl;
 
     auto t1 = std::chrono::high_resolution_clock::now();
-
+	if (material_filename.back() == '\r') {
+			material_filename.pop_back();
+	}
     std::ifstream ifs(material_filename);
     if (ifs.good()) {
       LoadMtl(&material_map, materials, &ifs);
@@ -1510,13 +1517,13 @@ bool parseObj(attrib_t *attrib, std::vector<shape_t> *shapes,
     StackVector<std::thread, 16> workers;
 
     for (size_t t = 0; t < num_threads; t++) {
-      int material_id = -1;  // -1 = default unknown material.
       workers->push_back(std::thread([&, t]() {
         size_t v_count = v_offsets[t];
         size_t n_count = n_offsets[t];
         size_t t_count = t_offsets[t];
         size_t f_count = f_offsets[t];
         size_t face_count = face_offsets[t];
+		int material_id = -1;  // -1 = default unknown material.
 
         for (size_t i = 0; i < commands[t].size(); i++) {
           if (commands[t][i].type == COMMAND_EMPTY) {
@@ -1558,8 +1565,9 @@ bool parseObj(attrib_t *attrib, std::vector<shape_t> *shapes,
                   index_t(vertex_index, texcoord_index, normal_index);
             }
             for (size_t k = 0; k < commands[t][i].f_num_verts.size(); k++) {
-							attrib->material_ids[face_count + k] = material_id;
-							attrib->face_num_verts[face_count + k] = commands[t][i].f_num_verts[k];
+              attrib->material_ids[face_count + k] = material_id;
+              attrib->face_num_verts[face_count + k] =
+                  commands[t][i].f_num_verts[k];
             }
 
             f_count += commands[t][i].f.size();
@@ -1572,7 +1580,19 @@ bool parseObj(attrib_t *attrib, std::vector<shape_t> *shapes,
     for (size_t t = 0; t < workers->size(); t++) {
       workers[t].join();
     }
-
+	if(material_map.size()>1&& num_threads>1) {
+			for (size_t t = 0; t < num_threads; t++) {
+				size_t face_count = face_offsets[t];
+				if (-1 == attrib->material_ids[face_count]) {
+					int prev_material_id = attrib->material_ids[face_count - 1];
+					size_t max_face_offset = (t == num_threads - 1) ? attrib->material_ids.size() : face_offsets[t + 1];
+					for (int i = face_count; i<max_face_offset; ++i) {
+						if (attrib->material_ids[i] != -1) break;
+						attrib->material_ids[i] = prev_material_id;
+					}
+				}
+			}
+	}
     auto t_end = std::chrono::high_resolution_clock::now();
     ms_merge = t_end - t_start;
   }
@@ -1671,8 +1691,7 @@ bool parseObj(attrib_t *attrib, std::vector<shape_t> *shapes,
 
   return true;
 }
-#endif  // TINYOBJ_LOADER_OPT_IMPLEMENTATION
 
 }  // namespace tinyobj_opt
 
-#endif  // TINOBJ_LOADER_OPT_H_
+#endif  // TINYOBJ_LOADER_OPT_IMPLEMENTATION

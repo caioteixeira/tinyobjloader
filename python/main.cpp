@@ -29,7 +29,7 @@ PyObject* pyTupleFromfloat3(float array[3]) {
 extern "C" {
 
 static PyObject* pyLoadObj(PyObject* self, PyObject* args) {
-  PyObject *rtndict, *pyshapes, *pymaterials, *attribobj, *current, *meshobj;
+  PyObject *rtndict, *pyshapes, *pymaterials, *pymaterial_indices, *attribobj, *current, *meshobj;
 
   char const* current_name;
   char const* filename;
@@ -48,6 +48,7 @@ static PyObject* pyLoadObj(PyObject* self, PyObject* args) {
 
   pyshapes = PyDict_New();
   pymaterials = PyDict_New();
+  pymaterial_indices = PyList_New(0);
   rtndict = PyDict_New();
 
   attribobj = PyDict_New();
@@ -129,49 +130,51 @@ static PyObject* pyLoadObj(PyObject* self, PyObject* args) {
     PyObject* unknown_parameter = PyDict_New();
 
     for (std::map<std::string, std::string>::iterator p =
-             (*mat).unknown_parameter.begin();
-         p != (*mat).unknown_parameter.end(); ++p) {
+             mat->unknown_parameter.begin();
+         p != mat->unknown_parameter.end(); ++p) {
       PyDict_SetItemString(unknown_parameter, p->first.c_str(),
                            PyUnicode_FromString(p->second.c_str()));
     }
 
     PyDict_SetItemString(matobj, "shininess",
-                         PyFloat_FromDouble((*mat).shininess));
-    PyDict_SetItemString(matobj, "ior", PyFloat_FromDouble((*mat).ior));
+                         PyFloat_FromDouble(mat->shininess));
+    PyDict_SetItemString(matobj, "ior", PyFloat_FromDouble(mat->ior));
     PyDict_SetItemString(matobj, "dissolve",
-                         PyFloat_FromDouble((*mat).dissolve));
-    PyDict_SetItemString(matobj, "illum", PyLong_FromLong((*mat).illum));
+                         PyFloat_FromDouble(mat->dissolve));
+    PyDict_SetItemString(matobj, "illum", PyLong_FromLong(mat->illum));
     PyDict_SetItemString(matobj, "ambient_texname",
-                         PyUnicode_FromString((*mat).ambient_texname.c_str()));
+                         PyUnicode_FromString(mat->ambient_texname.c_str()));
     PyDict_SetItemString(matobj, "diffuse_texname",
-                         PyUnicode_FromString((*mat).diffuse_texname.c_str()));
+                         PyUnicode_FromString(mat->diffuse_texname.c_str()));
     PyDict_SetItemString(matobj, "specular_texname",
-                         PyUnicode_FromString((*mat).specular_texname.c_str()));
+                         PyUnicode_FromString(mat->specular_texname.c_str()));
     PyDict_SetItemString(
         matobj, "specular_highlight_texname",
-        PyUnicode_FromString((*mat).specular_highlight_texname.c_str()));
+        PyUnicode_FromString(mat->specular_highlight_texname.c_str()));
     PyDict_SetItemString(matobj, "bump_texname",
-                         PyUnicode_FromString((*mat).bump_texname.c_str()));
+                         PyUnicode_FromString(mat->bump_texname.c_str()));
     PyDict_SetItemString(
         matobj, "displacement_texname",
-        PyUnicode_FromString((*mat).displacement_texname.c_str()));
+        PyUnicode_FromString(mat->displacement_texname.c_str()));
     PyDict_SetItemString(matobj, "alpha_texname",
-                         PyUnicode_FromString((*mat).alpha_texname.c_str()));
-    PyDict_SetItemString(matobj, "ambient", pyTupleFromfloat3((*mat).ambient));
-    PyDict_SetItemString(matobj, "diffuse", pyTupleFromfloat3((*mat).diffuse));
+                         PyUnicode_FromString(mat->alpha_texname.c_str()));
+    PyDict_SetItemString(matobj, "ambient", pyTupleFromfloat3(mat->ambient));
+    PyDict_SetItemString(matobj, "diffuse", pyTupleFromfloat3(mat->diffuse));
     PyDict_SetItemString(matobj, "specular",
-                         pyTupleFromfloat3((*mat).specular));
+                         pyTupleFromfloat3(mat->specular));
     PyDict_SetItemString(matobj, "transmittance",
-                         pyTupleFromfloat3((*mat).transmittance));
+                         pyTupleFromfloat3(mat->transmittance));
     PyDict_SetItemString(matobj, "emission",
-                         pyTupleFromfloat3((*mat).emission));
+                         pyTupleFromfloat3(mat->emission));
     PyDict_SetItemString(matobj, "unknown_parameter", unknown_parameter);
 
-    PyDict_SetItemString(pymaterials, (*mat).name.c_str(), matobj);
+    PyDict_SetItemString(pymaterials, mat->name.c_str(), matobj);
+    PyList_Append(pymaterial_indices, PyUnicode_FromString(mat->name.c_str()));
   }
 
   PyDict_SetItemString(rtndict, "shapes", pyshapes);
   PyDict_SetItemString(rtndict, "materials", pymaterials);
+  PyDict_SetItemString(rtndict, "material_indices", pymaterial_indices);
   PyDict_SetItemString(rtndict, "attribs", attribobj);
 
   return rtndict;
